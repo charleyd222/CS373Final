@@ -1,5 +1,6 @@
 import sqlite3
 import pandas as pd
+import numpy as np
 
 con = sqlite3.connect('assets/wjazzd.db')
 
@@ -23,24 +24,44 @@ def split_data(ins): # Returns dict of dataframes
 
     return data
 
-data = split_data('p')
+def create_data(bin_size, instrument = 'p', contour_len = 4):
+    data_pitch = []
+    data_contour = []
 
-print(data[1].keys())
-print(data[1][['duration','beatdur']])
+    df = split_data('p')
 
-past = 1
-time = 0
-beat_time = 0
-its = 0
-for i in data[1]['bar'].keys():
-    
-    if data[1]['bar'][i] == past:
-        time += data[1]['duration'][i]
-        beat_time += data[1]['beatdur'][i]
-        its += 1
-    else:
-        print(past, time, beat_time, its)
-        past = data[1]['bar'][i]
-        time = data[1]['duration'][i]
-        beat_time = data[1]['beatdur'][i]
-        its = 0
+    for data_set in data:
+        #initial data key
+        k = df[data_set]['pitch'].keys()[0]
+        k0 = k
+        kf = df[data_set]['pitch'].keys()[-1]
+        t = 0
+        dur = df[data_set]['duration'][k]
+        tot_dur = 0
+
+        data_pitch_temp = []
+        data_contour_temp = []
+        
+        while k < kf + 1:
+            dur = df[data_set]['duration'][k]
+            data_pitch += [df[data_set]['pitch'][k]]
+            if k - k0 > (contour_len - 1):
+                data_contour += [np.average(df[data_set]['pitch'][(k - k0 - contour_len):(k - k0)], 
+                    weights=df[data_set]['duration'][(k - k0 - contour_len):(k - k0)])]
+            else:
+                data_contour += [0]
+
+            t += bin_size
+
+            if t >  dur:
+                k += 1
+                t = 0
+
+        data_pitch.extend(data_pitch_temp)
+        data_contour.extend(data_contour_temp)
+
+
+    d = np.array([data_pitch, data_contour]).T
+    new_df = pd.DataFrame(d, columns=['pitch','contour'])
+
+    return new_df
