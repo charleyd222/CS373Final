@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from torch import nn
 import torch
-
+from makemidi import makeMidi
 def find_instruments(ins, db = 'assets/wjazzd.db'): # Finds melids of solos of a certain instrument
     # access data from sq database
     con = sqlite3.connect(db)
@@ -23,7 +23,7 @@ def find_instruments(ins, db = 'assets/wjazzd.db'): # Finds melids of solos of a
 
     return data
 
-def create_data(bin_size, instrument = 'p', contour_len = 4, pdf = False):
+def create_data_bin(bin_size, instrument = 'p', contour_len = 4, pdf = False):
     data_pitch = []
     data_contour = []
 
@@ -77,10 +77,89 @@ def create_data(bin_size, instrument = 'p', contour_len = 4, pdf = False):
 
     return df
 
-if __name__ == "__main__":
-    d = create_data(0.01)
-    print(d[:20])
-    rnn = nn.RNN(2, 20)
-    output, hn = rnn(d)
+def create_data(instrument = 'p', contour_len = 4, pdf = False):
+    data_pitch = []
+    data_contour = []
+    data_duration = []
 
-    print(output)
+    # Get all instrument (default piano) data 
+    df = find_instruments(instrument)
+
+    for data_set in df:
+        # pitch and duration
+        
+
+        # create contout
+        k = df[data_set]['duration'].keys()[0]
+        for i in range(len(df[data_set]['pitch'])):
+            data_duration += [df[data_set]['duration'][i + k]]
+            data_pitch += [df[data_set]['pitch'][i + k]]
+            if i > (contour_len - 1):
+                data_contour += [np.average(
+                    df[data_set]['pitch'][(i - contour_len):i])]
+            else:
+                data_contour += [0]
+    print(data_duration[:5])
+    # Convert data to either pandas df or to torch tensor
+    df = np.array([data_pitch, data_contour, data_duration]).T
+    if pdf:
+        df = pd.DataFrame(df, columns=['pitch','contour'])
+    else:
+        df = torch.from_numpy(df).float()
+
+    return df
+
+class rnn_model(nn.Module):
+    def __init__(self, input_size, hidden_size, output_size):
+        super(rnn_model, self).__init__()
+        self.rnn = nn.RNN(input_size, hidden_size, batch_first=True)
+        self.fc = nn.Linear(hidden_size, output_size)
+    
+    def forward(self, x):
+        h0 = torch.zeros(1, x.size(0), hidden_size).to(x.device)
+        out, _ = self.rnn(x, h0)
+        out = self.fc(out)
+        return out
+
+def train_model(X, y, model):
+    loss_func = nn.MSELoss()
+    optimizer = torch.optim.SGD(model.parameters(), lr=rate)
+
+    # Training loop
+    num_epochs = 100
+    for epoch in range(num_epochs):
+        model.train()
+        outputs = model(X.unsqueeze(2))  # Add a dimension for input size
+        loss = loss_func(outputs, y.unsqueeze(2))
+        
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        
+        if (epoch + 1) % 10 == 0:
+            print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}')
+
+if __name__ == "__main__":
+    d = create_data()
+    #print(d[:20])
+    X = d[:-1]
+    y = d[1:]
+    
+    input_size = 1
+    hidden_size = 200
+    output_size = 2
+    rate = 0.001
+    model = rnn_model(input_size, hidden_size, output_size)
+    print(X.shape)
+
+    train_model(X, y, model)
+
+    model.eval()
+    with torch.no_grad():
+        predictions = model(X.unsqueeze(2)).squeeze(2).numpy()
+
+    print(predictions)
+
+    #makeMidi(predictions)
+
+    
