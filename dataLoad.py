@@ -253,12 +253,12 @@ if __name__ == "__main__":
     
     #Hyperparameter Setup
     input_size = 18
-    hidden_size = 128
+    hidden_size = 256
     output_size = 18
-    rate = 0.01
+    rate = 0.1
     epochs = 5
     sequence_length = 16
-    layers = 10
+    layers = 5
     max_length = 100 # number of new events to generate in composition
 
     # Set up the model
