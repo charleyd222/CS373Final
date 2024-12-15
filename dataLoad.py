@@ -6,6 +6,9 @@ from torch import nn
 import torch
 from makemidi import makeMidi
 import pickle
+from pythonosc import udp_client, dispatcher, osc_server
+from threading import Thread
+import time
 
 # some code from https://medium.com/@abhilashkrish/step-by-step-guide-to-music-generation-using-rnns-with-pytorch-2fbf1a4172a3
 
