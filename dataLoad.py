@@ -298,3 +298,5 @@ if __name__ == "__main__":
     # Open a file and use dump() 
     with open('model.pkl', 'wb') as file: 
         pickle.dump(model, file) 
+
+    send_confirmation_via_osc()
