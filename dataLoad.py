@@ -247,8 +247,8 @@ def test_model(model, start_sequence, max_length):
 
 # After saving the model, call pythonosc functionality
 def send_saved_model_notification():
-    client_ip = "10.17.244.147"
-    client_port = 6070
+    client_ip = "10.17.244.147"  # Localhost IP address for testing
+    client_port = 6070        # Port to send messages to MAX/MSP
 
     def send_message():
         client = udp_client.SimpleUDPClient(client_ip, client_port)
