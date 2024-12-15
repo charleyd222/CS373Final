@@ -2,6 +2,11 @@ from pythonosc import udp_client, dispatcher, osc_server
 from threading import Thread
 import time
 
+
+# to instal copy:
+# pip install python-osc
+# into terminal
+
 # OSC Client to send messages
 def send_osc_message(ip, port, address, value):
     client = udp_client.SimpleUDPClient(ip, port)
