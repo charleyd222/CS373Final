@@ -15,7 +15,7 @@ def send_osc_message(ip, port, address, value):
 
 # Callback function for received OSC messages
 def osc_message_handler(address, *args):
-    #print(f"Received message: Address: {address} Args: {args}")
+    print(f"Received message: Address: {address} Args: {args}")
 
 # OSC Server to listen for incoming messages
 def start_osc_server(ip, port):

@@ -1,3 +1,4 @@
+from sys import argv
 import sqlite3
 import pandas as pd
 import numpy as np
@@ -7,9 +8,6 @@ from makemidi import makeMidi
 import pickle
 
 # some code from https://medium.com/@abhilashkrish/step-by-step-guide-to-music-generation-using-rnns-with-pytorch-2fbf1a4172a3
-#Set random seeds
-torch.manual_seed(12345)
-np.random.seed(12345)
 
 # Finds all melids with instrument atribute instrument, then
 def find_instruments(ins, db = 'assets/wjazzd.db'): # Finds melids of solos of a certain instrument
@@ -251,15 +249,34 @@ if __name__ == "__main__":
     #Load data
     d = create_data()
     
-    #Hyperparameter Setup
-    input_size = 18
-    hidden_size = 256
-    output_size = 18
-    rate = 0.1
-    epochs = 5
-    sequence_length = 16
-    layers = 10
-    max_length = 100 # number of new events to generate in composition
+    # Old Hyperparameter Setup
+    #input_size = 18
+    #hidden_size = 256
+    #output_size = 18
+    #rate = 0.001
+    #epochs = 3
+    #sequence_length = 16
+    #layers = 5
+
+    #Error catch and search mode
+    if len(argv) != 9:
+        print('need 8 args')
+        exit()
+
+    #Load arguments
+    #to run: python3 dataLoad.py seed sequence_length layers epochs input_size output_size rate hidden_size
+    seed = int(argv[1])
+    sequence_length = int(argv[2])
+    layers = int(argv[3])
+    epochs = int(argv[4])
+    input_size = int(argv[5])
+    output_size = int(argv[6])
+    rate = float(argv[7])
+    hidden_size = int(argv[8])
+
+    #Set seeds
+    torch.manual_seed(seed)
+    np.random.seed(seed)
 
     # Set up the model
     X, y = make_sequences(d, sequence_length)
