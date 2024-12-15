@@ -13,7 +13,7 @@ def makeMidi(d):
 
     # add some notes
     channel = 1
-    volume = 100
+    volume = 50
     # data = {}
     # times = []
     # pitches = []
