@@ -258,7 +258,7 @@ if __name__ == "__main__":
     rate = 0.1
     epochs = 5
     sequence_length = 16
-    layers = 5
+    layers = 10
     max_length = 100 # number of new events to generate in composition
 
     # Set up the model
