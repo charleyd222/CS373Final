@@ -20,11 +20,18 @@ def makeMidi(d):
     file_index = 0
     done = False
     for i in d:
-        #print(i)
-        pitch = int(i[0])
-        step = i[1]
-        duration = i[2]
-        end = i[3]
+        pitch = 0
+        
+        try:
+            step = i[1]
+            duration = i[2]
+
+            pitch = int(i[0])
+        except:
+            pitch = int(i)
+            step = 0
+            duration = 1
+        end = 0
         
         if end == "dfakfb": # end of solo
             # print(f'adding note: {track, channel, pitch, time, duration, volume}')

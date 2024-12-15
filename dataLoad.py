@@ -81,11 +81,37 @@ def create_data_bin(bin_size, instrument = 'p', contour_len = 4, pdf = False):
 
     return df
 
+def one_hot_encode(notes, p):
+    # Create a dictionary to map note pitches to indices
+    
+    # Initialize an empty array for one-hot encoded sequences
+    one_hot_sequence = np.zeros((len(notes), len(p)))
+
+    # Fill in the one-hot encoding
+    v = np.zeros
+    i = 100000
+    for j, note in enumerate(notes):
+        if note > 80:
+            i = p['80']
+        elif note < 46:
+            i = p['46']
+        else:
+            if note %2 != 0:
+                i = p[str(int(note) + 1)]
+            else:
+                i = p[str(int(note))]
+        one_hot_sequence[j, i] = 1
+    #print(p)
+    #print(notes[:5])
+    #print(one_hot_sequence[:5])
+    return one_hot_sequence
+
 def create_data(instrument = 'p', contour_len = 4, pdf = False):
     data_pitch = []
     data_duration = []
     data_step = []
     data_end = []
+    p = {}
 
     # Get all instrument (default piano) data 
     df, bpms = find_instruments(instrument)
@@ -102,19 +128,24 @@ def create_data(instrument = 'p', contour_len = 4, pdf = False):
         #     else:
         #         data_contour += [0]
         step = 0
+        p = {'46':0, '48':0, '50':0, '52':0, '54':0, '56':0, '58':0, '60':0, '62':0, '64':0, '66':0, '68':0, '70':0, '72':0, '74':0, '76':0, '78':0,'80':0}
+        p_to_i = np.zeros(len(p.keys()))
+        for i, n in enumerate(p):
+            p[n] = i
+
+
         for i in range(len(df[data_set]['pitch'])): # count for each pitch in the df
-            if i == len(df[data_set]['pitch']) - 1: # at the end
-                data_end.append(1)
-            else:
-                data_end.append(0)
             data_duration.append(df[data_set]['duration'].iloc[i]) # add duration of current event
             data_pitch.append(df[data_set]['pitch'].iloc[i]) # add pitch of current event
+            
+            
             data_step.append(step)
             if i < len(df[data_set]['pitch']) - 1:
                 step = df[data_set]['onset'].iloc[i + 1] - df[data_set]['onset'].iloc[i] - df[data_set]['duration'].iloc[i] # length of silence after current note
     
     # Convert data to either pandas df or to torch tensor
-    df = np.array([data_pitch, data_step, data_duration, data_end]).T
+    data_pitch = one_hot_encode(data_pitch, p)
+    df = np.array(data_pitch)
     if pdf:
         df = pd.DataFrame(df, columns=['pitch','step','duration', 'end'])
     else:
@@ -149,25 +180,25 @@ class rnn_model(nn.Module):
         #print(f"hidden,shape: {hidden[0].shape}")
         out, hidden = self.lstm(x, hidden)
         #print(f"out: {out}")
-        # print(out.shape)
+        #print(out.shape)
         # print(out)
         # h0 = torch.zeros(1, x.size(0), hidden_size).to(x.device)
         # out, _ = self.rnn(x, h0)
-        # out = self.fc(out[:, -1, :])
-        out = self.fc(out)
+        out = self.fc(out[-1,:])
+        #out = self.fc(out)
         return out, hidden
     
     def init_hidden(self):
         #print(self.num_layers, self.hidden_size)
-        h0 = torch.zeros(self.num_layers, 1, self.hidden_size)
-        c0 = torch.zeros(self.num_layers, 1, self.hidden_size)
+        h0 = torch.zeros(self.num_layers, self.hidden_size)
+        c0 = torch.zeros(self.num_layers, self.hidden_size)
         #print(f'h0: {h0.shape}')
         #print(f'c0: {c0.shape}')
         #print(h0)
         return (h0, c0)
 
 def train_model(X, y, model, rate, epochs):
-    loss_func = nn.MSELoss()
+    loss_func = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=rate)
 
     if torch.cuda.is_available():
@@ -180,7 +211,7 @@ def train_model(X, y, model, rate, epochs):
     for epoch in range(epochs):
         n = 0
         for Xi, yi in zip(X, y):
-            #print(Xi, yi)
+            #print(yi)
             #print(Xi.shape)
             # model.train()
             # outputs = model(X.unsqueeze(2))  # Add a dimension for input size
@@ -189,14 +220,16 @@ def train_model(X, y, model, rate, epochs):
             # optimizer.zero_grad()
             # loss.backward()
             # optimizer.step()
-            Xi = Xi.unsqueeze(0).to(device)
+            #print(yi)
+            Xi = Xi.to(device)
             yi = yi.to(device)
             hidden = model.init_hidden()
             outputs, hidden = model(Xi, hidden)
             #print(f'output: {outputs.shape}')
             #print(f'yi: {yi.shape}')
-            #print(outputs, yi)
-            loss = loss_func(outputs[0,0,:], yi)
+            #print(outputs)
+            #print()
+            loss = loss_func(outputs, yi)
             
             optimizer.zero_grad()
             loss.backward()
@@ -207,34 +240,35 @@ def train_model(X, y, model, rate, epochs):
 
 def test_model(model, start_sequence, max_length):
     model.eval()
-    input_seq = torch.tensor(start_sequence, dtype=torch.float32).unsqueeze(0)
+    input_seq = torch.tensor(start_sequence, dtype=torch.float32)
     generated_sequence = start_sequence
     hidden = model.init_hidden()
     
     for _ in range(max_length):
         output, hidden = model(input_seq, hidden)
         #_, predicted_event = torch.max(output.data, 1) # choose most probable next event
-        predicted_event = output.detach().numpy()[0,:1,:]
-        print(predicted_event.shape)
+        #print(input_seq.shape)
+        predicted_event = output.detach().unsqueeze(0).numpy()
+        #print(predicted_event.shape)
         #print(predicted_event[0]) # get data from tensor
-        print(generated_sequence.shape)
+        #print(generated_sequence.shape)
         generated_sequence = np.concat((generated_sequence, predicted_event), 0)
         #print(generated_sequence.shape) # add predicted event to sequence
-        input_seq = torch.cat((input_seq, torch.tensor(predicted_event).unsqueeze(1)), dim = 1) # add predicted event to next input
+        input_seq = torch.cat((input_seq, torch.tensor(predicted_event)), dim = 0) # add predicted event to next input
 
         #print(input_seq.shape)
-        input_seq = input_seq[:,1:,:]
+        input_seq = input_seq[1:,:]
     
     return generated_sequence        
 
 if __name__ == "__main__":
     d = create_data()
     
-    input_size = 4
-    hidden_size = 128
-    output_size = 4
-    rate = 0.01
-    epochs = 100
+    input_size = 18
+    hidden_size = 256
+    output_size = 18
+    rate = 0.1
+    epochs = 5
     sequence_length = 16
     max_length = 100 # number of new events to generate in composition
     X, y = make_sequences(d, sequence_length)
