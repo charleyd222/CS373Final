@@ -243,7 +243,19 @@ def test_model(model, start_sequence, max_length):
 
         input_seq = input_seq[1:,:]
     
-    return generated_sequence        
+    return generated_sequence   
+
+# After saving the model, call pythonosc functionality
+def send_saved_model_notification():
+    client_ip = "10.17.244.147"
+    client_port = 6070
+
+    def send_message():
+        client = udp_client.SimpleUDPClient(client_ip, client_port)
+        client.send_message("/model_saved", "Model training completed and saved.")
+        print(f"Notification sent to {client_ip}:{client_port}")
+
+    send_message()
 
 if __name__ == "__main__":
     #Load data
@@ -299,4 +311,5 @@ if __name__ == "__main__":
     with open('model.pkl', 'wb') as file: 
         pickle.dump(model, file) 
 
-    send_confirmation_via_osc()
+    send_saved_model_notification()
+    
