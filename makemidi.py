@@ -23,3 +23,6 @@ def makeMidi(d):
     # write it to disk
     with open("output.mid", 'wb') as outf:
         mf.writeFile(outf)
+
+
+## add an output number of 128 so that the data knows when to stop
